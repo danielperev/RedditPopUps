@@ -4,6 +4,7 @@ import csv
 import re
 import webbrowser
 from win10toast import ToastNotifier
+from intervals import IntInterval
 
 #USAGE INSTRUCTIONS:
 #-------------------------------
@@ -12,13 +13,14 @@ from win10toast import ToastNotifier
 #
 #Multiple keywords can be entered as such: keyword, keyword2, keyword3.
 #
-#Score must be entered with as a value. Default is > than the score entered.
+#Score must be entered as an interval. Such as [x, y] or (x, y) or [x, y) and vice-versa. 
+#Submissions with scores that are in the interval will be notified. 
 #
 #Multiple users can be entered as such: user, user2, user3.
 #
-#Setting must be set as the sorting type.
-#Example: Hot
-#or Top, or Rising, or New, or Controversial
+#Setting must be set as the sorting type. Default is set to hot.
+#Example: hot
+#or top, or rising, or new, or controversial
 #--------------------------------
 
 with open ('api_info.txt', 'r') as file:
@@ -64,9 +66,9 @@ def buildDictionary()->dict:
 		read = csv.reader(file)
 		next(read) #skip header
 
-		for row in read: #SIMPLY SKIPS DUPLICATES
+		for row in read: #skips duplicates
 			if row[0] not in popUpDict:
-				popUpDict[row[0]] = [[x.strip() for x in row[1].split(',') if x], row[2], 
+				popUpDict[row[0]] = [[x.strip() for x in row[1].split(',') if x], IntInterval.from_string(row[2]), 
 									[x.strip() for x in row[3].split(',') if x], row[4]]
 				if '' == row[2]:
 					popUpDict[row[0]][1] = '0'
@@ -82,7 +84,7 @@ def main():
 	for subreddit in popUpDict:
 		for submission in getattr(reddit.subreddit(subreddit), popUpDict[subreddit][3])(limit = 20):
 			counter=0
-			if submission.score > int(popUpDict[subreddit][1]):
+			if submission.score in popUpDict[subreddit][1]:
 				counter+=1
 			if submission.author.name in popUpDict[subreddit][2] or not popUpDict[subreddit][2]:
 				counter+=1
@@ -91,11 +93,10 @@ def main():
 
 			#The callback_on_click method argument was taken from "Charnelx" here: 
 			#https://github.com/jithurjacob/Windows-10-Toast-Notifications/pull/38
-			#This makes it so that when you click the notification it goes to the url.
+			#This makes it so that when you click the notification it activates the specified method.
 			if counter == len(popUpDict[subreddit])-1:
 				notify.show_toast(subreddit, submission.title+ " : " + submission.url, 
-					icon_path=None, duration=2, callback_on_click = lambda: open_browser_tab(submission.url))
+					icon_path=None, duration=3, callback_on_click = lambda: open_browser_tab(submission.url))
 
 if __name__ == "__main__":
 	main()
-
